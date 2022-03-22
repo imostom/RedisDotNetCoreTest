@@ -2,11 +2,16 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
+using RedisTest.Repository;
+using RedisTest.Services;
+using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,6 +33,31 @@ namespace RedisTest
         {
 
             services.AddControllers();
+            services.AddDistributedMemoryCache();
+
+
+            //Configure other services up here
+            //var multiplexer = ConnectionMultiplexer.Connect("localhost:6379");
+            //services.AddSingleton<IConnectionMultiplexer>(multiplexer);
+            //var vv = Configuration["RedisCache"];
+            services.AddStackExchangeRedisCache(options =>
+            {
+                //options.Configuration = "localhost:6379";
+                options.Configuration = Configuration["RedisCache"];
+            });
+
+            services.AddDbContext<RedisTest.Data.AppContext>(options =>
+            options.UseSqlServer(
+            Configuration.GetConnectionString("TestConnectionString"), providerOptions => providerOptions.EnableRetryOnFailure()));
+
+            services.AddScoped<IDapperGenericRepository, DapperGenericRepository>();
+            services.AddScoped<IRedisTestRepository, RedisTestRepository>();
+            services.AddScoped<IRedisTestService, RedisTestService>();
+            //services.AddScoped<RedisHelper, RedisHelper>();
+            services.AddScoped<CacheProvider, CacheProvider>();
+
+
+
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "RedisTest", Version = "v1" });
